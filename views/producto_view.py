@@ -1,0 +1,271 @@
+# views/producto_view.py
+import tkinter as tk
+from tkinter import ttk, messagebox
+from controllers.producto_controller import ProductoController
+from controllers.proveedor_controller import ProveedorController
+
+class ProductoView:
+    def __init__(self, parent):
+        self.window = parent
+        self.window.title("📦 Gestión de Productos")
+        self.window.geometry("1150x600")
+
+        self.producto_seleccionado_id = None
+        # ✅ Inicializamos la lista vacía desde el inicio
+        self.lista_proveedores = {}  # ← ¡ESTO FALTABA!
+        
+        self.create_widgets()
+        self.cargar_proveedores()  # ← debe llamarse antes de usar self.lista_proveedores
+        self.cargar_productos()
+
+    def create_widgets(self):
+        # ... (igual que antes, no cambia) ...
+        frame_form = tk.Frame(self.window, padx=15, pady=15)
+        frame_form.pack(side="left", fill="y")
+
+        tk.Label(frame_form, text="➕/✏️ Producto", font=("Arial", 14, "bold")).grid(row=0, column=0, columnspan=2, pady=10)
+
+        tk.Label(frame_form, text="Código:").grid(row=1, column=0, sticky="e", pady=5)
+        self.entry_codigo = tk.Entry(frame_form, width=25)
+        self.entry_codigo.grid(row=1, column=1, pady=5)
+
+        tk.Label(frame_form, text="Nombre *:").grid(row=2, column=0, sticky="e", pady=5)
+        self.entry_nombre = tk.Entry(frame_form, width=25)
+        self.entry_nombre.grid(row=2, column=1, pady=5)
+
+        tk.Label(frame_form, text="Descripción:").grid(row=3, column=0, sticky="e", pady=5)
+        self.entry_desc = tk.Entry(frame_form, width=25)
+        self.entry_desc.grid(row=3, column=1, pady=5)
+
+        tk.Label(frame_form, text="Tipo *:").grid(row=4, column=0, sticky="e", pady=5)
+        self.combo_tipo = ttk.Combobox(frame_form, values=["unidad", "granel"], state="readonly", width=22)
+        self.combo_tipo.set("unidad")
+        self.combo_tipo.grid(row=4, column=1, pady=5)
+
+        tk.Label(frame_form, text="Precio Unitario ($):").grid(row=5, column=0, sticky="e", pady=5)
+        # Validar que solo se acepten números (con decimales)
+        vcmd = (self.window.register(self.validar_numero), '%P')
+        self.entry_precio = tk.Entry(frame_form, width=25, validate='key', validatecommand=vcmd)
+
+        self.entry_precio.grid(row=5, column=1, pady=5)
+
+        tk.Label(frame_form, text="Stock Inicial:").grid(row=6, column=0, sticky="e", pady=5)
+        self.entry_stock = tk.Entry(frame_form, width=25)
+        self.entry_stock.grid(row=6, column=1, pady=5)
+        self.entry_stock.insert(0, "0.000")
+
+        tk.Label(frame_form, text="Proveedor:").grid(row=7, column=0, sticky="e", pady=5)
+        self.combo_proveedor = ttk.Combobox(frame_form, state="readonly", width=22)
+        self.combo_proveedor.grid(row=7, column=1, pady=5)
+        
+        # Botones
+        btn_frame = tk.Frame(frame_form)
+        btn_frame.grid(row=8, column=0, columnspan=2, pady=15)
+
+        self.btn_guardar = ttk.Button(btn_frame, text="💾 Guardar", command=self.guardar)
+        self.btn_guardar.pack(side="left", padx=5)
+
+        self.btn_editar = ttk.Button(btn_frame, text="✏️ Editar", command=self.editar, state="disabled")
+        self.btn_editar.pack(side="left", padx=5)
+
+        self.btn_eliminar = ttk.Button(btn_frame, text="🗑️ Eliminar", command=self.eliminar, state="disabled")
+        self.btn_eliminar.pack(side="left", padx=5)
+
+        ttk.Button(btn_frame, text="↻ Limpiar", command=self.limpiar).pack(side="left", padx=5)
+
+        # Frame derecho: tabla
+        frame_tabla = tk.Frame(self.window)
+        frame_tabla.pack(side="right", fill="both", expand=True, padx=10)
+
+        columns = ("ID", "Código", "Nombre", "Tipo", "Precio", "Stock", "Proveedor")  # ✅ Sin "Descripción"
+        self.tree = ttk.Treeview(frame_tabla, columns=columns, show="headings")
+        for col in columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=85)
+
+        # Ajustar anchos específicos
+        self.tree.column("Nombre", width=150)
+        self.tree.column("Código", width=80)
+        self.tree.column("Proveedor", width=120)
+
+        scrollbar = ttk.Scrollbar(frame_tabla, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscroll=scrollbar.set)
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        self.tree.bind("<<TreeviewSelect>>", self.seleccionar_producto)
+
+    def validar_numero(self, valor):
+        """Valida que el campo solo acepte números (enteros o decimales)."""
+        if valor == "":
+            return True  # Permitir campo vacío
+        try:
+            float(valor)
+            return True
+        except ValueError:
+            return False
+    
+
+
+    def cargar_proveedores(self):
+        """Carga proveedores y los guarda en self.lista_proveedores"""
+        print("🔄 Iniciando carga de proveedores...")
+
+        try:
+            proveedores = ProveedorController.listar_proveedores()
+            print(f"✅ Proveedores obtenidos: {len(proveedores)}")
+
+            # Limpiar combo
+            self.combo_proveedor['values'] = []
+            self.combo_proveedor.set("")  # Limpiar selección
+
+            if not proveedores:
+                print("⚠️ No hay proveedores registrados.")
+                self.lista_proveedores = {}
+                self.combo_proveedor['values'] = ["— Sin proveedores —"]
+                self.combo_proveedor.set("")  # Dejar vacío
+                return
+
+            # Crear diccionario: {id: nombre}
+            self.lista_proveedores = {p['id']: p['nombre'] for p in proveedores}
+            nombres = list(self.lista_proveedores.values())
+
+            # Actualizar combo
+            self.combo_proveedor['values'] = nombres
+            # self.combo_proveedor.set(nombres[0])  # ✅ Comentamos esta línea
+            self.combo_proveedor.set("")  # ✅ Dejar vacío por defecto
+
+            print(f"✅ Combo actualizado con {len(nombres)} proveedores: {nombres}")
+
+            # Forzar actualización visual del combo
+            self.combo_proveedor.update_idletasks()
+
+        except Exception as e:
+            print(f"❌ Error al cargar proveedores: {e}")
+            messagebox.showerror("❌ Error", f"No se pudieron cargar los proveedores:\n{e}")
+            self.lista_proveedores = {}
+            self.combo_proveedor['values'] = ["— Error al cargar —"]
+            self.combo_proveedor.set("— Error al cargar —")
+
+        print("🔍 self.lista_proveedores:", self.lista_proveedores)
+        print("📋 self.combo_proveedor['values']:", self.combo_proveedor['values'])
+
+
+    def cargar_productos(self):
+        for item in self.tree.get_children():
+           self.tree.delete(item)
+
+        try:
+            productos = ProductoController.listar_productos()
+            for p in productos:
+                proveedor = p.get('proveedor', '—')
+                self.tree.insert("", "end", values=(
+                    p['id'], p['codigo'], p['nombre'], p['tipo'],
+                    f"${p['precio_unitario']:.2f}", f"{p['stock']:.3f}", proveedor
+                ))
+        except Exception as e:
+            messagebox.showerror("❌ Error", f"No se pudieron cargar los productos:\n{e}")
+            print(f"Error en cargar_productos: {e}")
+
+    def guardar(self):
+        codigo = self.entry_codigo.get().strip()
+        nombre = self.entry_nombre.get().strip()
+        desc = self.entry_desc.get().strip()
+        tipo = self.combo_tipo.get()
+        precio = self.entry_precio.get()
+        stock = self.entry_stock.get()
+        
+        # ✅ Obtener proveedor seleccionado (puede ser None)
+        proveedor_nombre = self.combo_proveedor.get()
+        id_proveedor = None
+        if proveedor_nombre and proveedor_nombre in self.lista_proveedores.values():
+            # Buscar ID del proveedor
+            for pid, pnombre in self.lista_proveedores.items():
+                if pnombre == proveedor_nombre:
+                    id_proveedor = pid
+                    break
+
+        # Llamar al controlador
+        if self.producto_seleccionado_id is None:
+            exito, mensaje, _ = ProductoController.crear_producto(
+                codigo=codigo, nombre=nombre, descripcion=desc, tipo=tipo,
+                precio_unitario=precio, stock=stock, id_proveedor=id_proveedor
+            )
+        else:
+            exito, mensaje, _ = ProductoController.actualizar_producto(
+                id_producto=self.producto_seleccionado_id, codigo=codigo, nombre=nombre,
+                descripcion=desc, tipo=tipo, precio_unitario=precio, stock=stock,
+                id_proveedor=id_proveedor
+            )
+
+        if exito:
+            messagebox.showinfo("✅ Éxito", mensaje)
+            self.limpiar()
+            self.cargar_productos()
+        else:
+            messagebox.showerror("❌ Error", mensaje)
+
+    def editar(self):
+        if self.producto_seleccionado_id is None:
+            messagebox.showwarning("⚠️", "Selecciona un producto de la tabla.")
+            return
+        self.btn_guardar.config(text="💾 Actualizar")
+        self.btn_editar.config(state="disabled")
+        self.btn_eliminar.config(state="disabled")
+
+    def eliminar(self):
+        if self.producto_seleccionado_id is None:
+            messagebox.showwarning("⚠️", "Selecciona un producto.")
+            return
+
+        if messagebox.askyesno("🗑️ Confirmar", "¿Eliminar este producto?\n¡Esta acción no se puede deshacer!"):
+            exito, mensaje = ProductoController.eliminar_producto(self.producto_seleccionado_id)
+            if exito:
+                messagebox.showinfo("✅ Éxito", mensaje)
+                self.limpiar()
+                self.cargar_productos()
+            else:
+                messagebox.showerror("❌ Error", mensaje)
+
+    def limpiar(self):
+        self.producto_seleccionado_id = None
+        self.entry_codigo.delete(0, tk.END)
+        self.entry_nombre.delete(0, tk.END)
+        self.entry_desc.delete(0, tk.END)
+        self.entry_precio.delete(0, tk.END)
+        self.entry_stock.delete(0, tk.END)
+        self.entry_stock.insert(0, "0.000")
+        self.combo_tipo.set("unidad")
+        
+        self.combo_proveedor.set("— Sin proveedores —")
+        self.btn_guardar.config(text="💾 Guardar")
+        self.btn_editar.config(state="disabled")
+        self.btn_eliminar.config(state="disabled")
+
+    def seleccionar_producto(self, event):
+        selected = self.tree.focus()
+        values = self.tree.item(selected, "values")
+        if not values:
+            return
+
+        self.producto_seleccionado_id = int(values[0])
+        self.limpiar()
+        self.entry_codigo.insert(0, values[1])
+        self.entry_nombre.insert(0, values[2])
+        # Desc, precio y stock no están en la tabla → cargar de DB
+        try:
+            prod = ProductoController.buscar_producto(id_producto=self.producto_seleccionado_id)
+            if prod:
+                p = prod[0]
+                self.entry_desc.insert(0, p['descripcion'])
+                self.entry_precio.insert(0, p['precio_unitario'])
+                self.entry_stock.delete(0, tk.END)
+                self.entry_stock.insert(0, p['stock'])
+                self.combo_tipo.set(p['tipo'])
+                if p['id_proveedor'] and p['id_proveedor'] in self.lista_proveedores:
+                    self.combo_proveedor.set(self.lista_proveedores[p['id_proveedor']])
+        except Exception as e:
+            messagebox.showerror("❌ Error", f"No se pudo cargar el producto:\n{e}")
+
+
+    
