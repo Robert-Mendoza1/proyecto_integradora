@@ -54,12 +54,9 @@ class UsuarioController:
     def listar_usuarios():
         """Obtiene todos los usuarios."""
         try:
-            return Usuario.obtener_todos()
-        except mysql.connector.Error as e:
-            print(f"⚠️ Error de base de datos al listar usuarios: {e}")
-            return []
+            return Usuario.obtener_todos()  # Asegúrate de que obtener_todos() incluya el campo 'estatus'
         except Exception as e:
-            print(f"⚠️ Error inesperado al listar usuarios: {e}")
+            print(f"⚠️ Error al listar usuarios: {e}")
             return []
 
     @staticmethod
@@ -108,3 +105,13 @@ class UsuarioController:
             return True, "✅ Usuario actualizado correctamente."
         except Exception as e:
             return False, f"❌ Error al actualizar usuario: {str(e)}"
+        
+    @staticmethod
+    def reactivar_usuario(id_usuario):
+        """Reactiva un usuario."""
+        try:
+            from models.usuario import Usuario
+            Usuario.reactivar_usuario(id_usuario)  # ✅ Llama al método correcto
+            return True, "✅ Usuario reactivado correctamente."
+        except Exception as e:
+            return False, f"❌ Error al reactivar usuario: {str(e)}"

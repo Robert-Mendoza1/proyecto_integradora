@@ -12,8 +12,11 @@ class EditarUsuarioView:
         self.window.geometry("400x350")
         self.window.resizable(False, False)
 
-        # Centrar ventana
-        self.window.eval('tk::PlaceWindow . center')
+        # Centrar ventana manualmente
+        self.window.update_idletasks()
+        x = self.window.winfo_x() + (self.window.winfo_width() // 2) - (self.window.winfo_reqwidth() // 2)
+        y = self.window.winfo_y() + (self.window.winfo_height() // 2) - (self.window.winfo_reqheight() // 2)
+        self.window.geometry(f"+{x}+{y}")
 
         self.create_widgets()
 

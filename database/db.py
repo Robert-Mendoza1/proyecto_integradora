@@ -159,3 +159,10 @@ if __name__ == "__main__":
     create_database()
     create_tables()
     crear_usuario_admin()  # 👈 Nueva función
+    
+    
+## Consulta para activar un usuario existente    
+#""" UPDATE usuarios 
+#SET estatus = 'activo' 
+#WHERE nombre_usuario = 'admin';
+#"""

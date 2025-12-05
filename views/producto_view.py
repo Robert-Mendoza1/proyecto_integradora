@@ -199,15 +199,16 @@ class ProductoView:
             )
 
         if exito:
-            messagebox.showinfo("✅ Éxito", mensaje)
+            messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)  # ✅ Añadir parent
             self.limpiar()
             self.cargar_productos()
         else:
-            messagebox.showerror("❌ Error", mensaje)
+            messagebox.showerror("❌ Error", mensaje, parent=self.window)  # ✅ Añadir parent
+
 
     def editar(self):
         if self.producto_seleccionado_id is None:
-            messagebox.showwarning("⚠️", "Selecciona un producto de la tabla.")
+            messagebox.showwarning("⚠️", "Selecciona un producto de la tabla.", parent=self.window)
             return
         self.btn_guardar.config(text="💾 Actualizar")
         self.btn_editar.config(state="disabled")
@@ -215,17 +216,22 @@ class ProductoView:
 
     def eliminar(self):
         if self.producto_seleccionado_id is None:
-            messagebox.showwarning("⚠️", "Selecciona un producto.")
+            messagebox.showwarning("⚠️", "Selecciona un producto.", parent=self.window)  # ✅ Añadir parent
             return
 
-        if messagebox.askyesno("🗑️ Confirmar", "¿Eliminar este producto?\n¡Esta acción no se puede deshacer!"):
+        if messagebox.askyesno(
+            "🗑️ Confirmar eliminación",
+            "¿Eliminar este producto?\n¡Esta acción no se puede deshacer!",
+            parent=self.window  # ✅ Añadir parent
+        ):
             exito, mensaje = ProductoController.eliminar_producto(self.producto_seleccionado_id)
             if exito:
-                messagebox.showinfo("✅ Éxito", mensaje)
+                messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)  # ✅ Añadir parent
                 self.limpiar()
                 self.cargar_productos()
             else:
-                messagebox.showerror("❌ Error", mensaje)
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)  # ✅ Añadir parent
+
 
     def limpiar(self):
         self.producto_seleccionado_id = None
@@ -236,36 +242,67 @@ class ProductoView:
         self.entry_stock.delete(0, tk.END)
         self.entry_stock.insert(0, "0.000")
         self.combo_tipo.set("unidad")
-        
-        self.combo_proveedor.set("— Sin proveedores —")
+        self.combo_proveedor.set("")  # ✅ Limpiar también el combo de proveedores
         self.btn_guardar.config(text="💾 Guardar")
         self.btn_editar.config(state="disabled")
         self.btn_eliminar.config(state="disabled")
 
-    def seleccionar_producto(self, event):
+    def seleccionar_producto(self, event=None):
+        """Obtiene el ID del producto seleccionado en la tabla."""
+        # Limpiar estado previo
+        self.producto_seleccionado_id = None
+        self.btn_editar.config(state="disabled")
+        self.btn_eliminar.config(state="disabled")
+
         selected = self.tree.focus()
-        values = self.tree.item(selected, "values")
-        if not values:
-            return
+        if not selected:
+            return  # No hay fila seleccionada
 
-        self.producto_seleccionado_id = int(values[0])
-        self.limpiar()
-        self.entry_codigo.insert(0, values[1])
-        self.entry_nombre.insert(0, values[2])
-        # Desc, precio y stock no están en la tabla → cargar de DB
         try:
-            prod = ProductoController.buscar_producto(id_producto=self.producto_seleccionado_id)
-            if prod:
-                p = prod[0]
-                self.entry_desc.insert(0, p['descripcion'])
-                self.entry_precio.insert(0, p['precio_unitario'])
-                self.entry_stock.delete(0, tk.END)
-                self.entry_stock.insert(0, p['stock'])
-                self.combo_tipo.set(p['tipo'])
-                if p['id_proveedor'] and p['id_proveedor'] in self.lista_proveedores:
-                    self.combo_proveedor.set(self.lista_proveedores[p['id_proveedor']])
+            item = self.tree.item(selected)
+            values = item.get("values", [])
+            
+            # Verificar que haya valores y que el primer valor sea un número
+            if not values or len(values) < 1:
+                messagebox.showinfo("ℹ️ Información", "Haz clic en una fila de la tabla para seleccionar un producto.", parent=self.window)
+                return
+            
+            id_str = str(values[0]).strip()
+            if not id_str.isdigit():
+                messagebox.showwarning("⚠️ Selección inválida", f"ID no válido: '{id_str}'\nHaz clic en una fila válida.", parent=self.window)
+                return
+            
+            id_prod = int(id_str)
+            if id_prod <= 0:
+                messagebox.showerror("❌ Error", f"ID inválido: {id_prod}", parent=self.window)
+                return
+
+            # ✅ Asignar el ID
+            self.producto_seleccionado_id = id_prod
+
+            # Cargar datos en el formulario
+            self.limpiar()
+            self.entry_codigo.insert(0, values[1])
+            self.entry_nombre.insert(0, values[2])
+            self.entry_desc.insert(0, values[3] if values[3] != "—" else "")
+            precio_str = values[4].replace("$", "")
+            self.entry_precio.insert(0, precio_str)
+            self.entry_stock.delete(0, tk.END)
+            self.entry_stock.insert(0, values[5])
+            self.combo_tipo.set(values[6])  # Tipo
+
+            # Cargar proveedor (índice 6)
+            proveedor_nombre = values[6]
+            if proveedor_nombre != "—":
+                self.combo_proveedor.set(proveedor_nombre)
+
+            # Habilitar botones
+            self.btn_editar.config(state="normal")
+            self.btn_eliminar.config(state="normal")
+
         except Exception as e:
-            messagebox.showerror("❌ Error", f"No se pudo cargar el producto:\n{e}")
-
-
-    
+            # Capturar cualquier error inesperado
+            messagebox.showerror("❌ Error interno", f"No se pudo seleccionar el producto:\n{str(e)}", parent=self.window)
+            self.producto_seleccionado_id = None
+            self.btn_editar.config(state="disabled")
+            self.btn_eliminar.config(state="disabled")

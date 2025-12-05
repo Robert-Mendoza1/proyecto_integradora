@@ -61,7 +61,8 @@ class Usuario:
         """Elimina un usuario (soft delete)."""
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor()
-        cursor.execute("UPDATE usuarios SET activo = FALSE WHERE id = %s", (id_usuario,))
+        # ✅ Cambiar estatus a 'inactivo' en lugar de solo cambiar 'activo'
+        cursor.execute("UPDATE usuarios SET activo = FALSE, estatus = 'inactivo' WHERE id = %s", (id_usuario,))
         conn.commit()
         cursor.close()
         conn.close()
@@ -83,6 +84,16 @@ class Usuario:
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor()
         cursor.execute("UPDATE usuarios SET estatus = 'inactivo' WHERE id = %s", (id_usuario,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    @staticmethod
+    def reactivar_usuario(id_usuario):
+        """Reactivar usuario (cambiar estatus a 'activo')."""
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE usuarios SET estatus = 'activo' WHERE id = %s", (id_usuario,))
         conn.commit()
         cursor.close()
         conn.close()

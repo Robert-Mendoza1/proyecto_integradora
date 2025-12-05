@@ -24,7 +24,7 @@ class UsuarioAdminView:
         tk.Label(self.window, text="👥 Usuarios del Sistema", font=("Arial", 14, "bold")).pack(pady=10)
 
         # Tabla
-        columns = ("ID", "Usuario", "Nombre", "Rol", "Estado")
+        columns = ("ID", "Usuario", "Nombre", "Rol", "Estatus")
         self.tree = ttk.Treeview(self.window, columns=columns, show="headings", height=15)
         for col in columns:
             self.tree.heading(col, text=col)
@@ -46,13 +46,23 @@ class UsuarioAdminView:
 
         usuarios = UsuarioController.listar_usuarios()
         for u in usuarios:
-            estado = "✅ Activo" if u['activo'] else "❌ Inactivo"
+            # ✅ Mostrar estatus real en lugar de solo 'activo/inactivo'
+            estatus = u['estatus']
+            if estatus == 'activo':
+                texto_estatus = "✅ Activo"
+            elif estatus == 'inactivo':
+                texto_estatus = "❌ Inactivo"
+            elif estatus == 'pendiente':
+                texto_estatus = "⏳ Pendiente"
+            else:
+                texto_estatus = f"❓ {estatus}"
+
             self.tree.insert("", "end", values=(
                 u['id'],
                 u['nombre_usuario'],
                 u['nombre_completo'],
                 u['rol'],
-                estado
+                texto_estatus
             ))
 
     def mostrar_menu_contextual(self, event):
@@ -71,7 +81,7 @@ class UsuarioAdminView:
         try:
             id_usuario = int(values[0])
             rol_usuario = values[3]  # Rol está en la columna 3
-            estado = values[4]  # Estado está en la columna 4
+            estatus_texto = values[4]  # Estatus está en la columna 4
         except (ValueError, IndexError):
             return
 
@@ -90,14 +100,27 @@ class UsuarioAdminView:
             foreground="blue"
         )
 
-        if "Activo" in estado:
+        # ✅ Opciones según estatus
+        if "Pendiente" in estatus_texto:
+            # Si está pendiente, mostrar opciones de aprobación
+            menu.add_command(
+                label="✅ Aprobar Usuario",
+                command=lambda: self.aprobar_usuario_directo(id_usuario),
+                foreground="green"
+            )
+            menu.add_command(
+                label="❌ Rechazar Usuario",
+                command=lambda: self.rechazar_usuario_directo(id_usuario),
+                foreground="red"
+            )
+        elif "Activo" in estatus_texto:
             # Si está activo, mostrar opción para desactivar
             menu.add_command(
                 label="🗑️ Desactivar Usuario",
                 command=lambda: self.desactivar_usuario_directo(id_usuario),
                 foreground="red"
             )
-        else:
+        elif "Inactivo" in estatus_texto:
             # Si está inactivo, mostrar opción para reactivar
             menu.add_command(
                 label="✅ Reactivar Usuario",
@@ -113,21 +136,49 @@ class UsuarioAdminView:
 
     def editar_usuario_directo(self, id_usuario):
         """Abrir ventana para editar usuario."""
-        # Obtener datos del usuario
-        usuarios = UsuarioController.listar_usuarios()
-        usuario = None
-        for u in usuarios:
-            if u['id'] == id_usuario:
-                usuario = u
-                break
+        try:
+            # Obtener datos del usuario
+            usuarios = UsuarioController.listar_usuarios()
+            usuario = None
+            for u in usuarios:
+                if u['id'] == id_usuario:
+                    usuario = u
+                    break
 
-        if not usuario:
-            messagebox.showerror("❌ Error", "Usuario no encontrado.")
-            return
+            if not usuario:
+                messagebox.showerror("❌ Error", "Usuario no encontrado.")
+                return
 
-        # Abrir ventana de edición
-        editar_window = tk.Toplevel(self.window)
-        EditarUsuarioView(editar_window, usuario, callback=self.cargar_usuarios)
+            # Abrir ventana de edición
+            editar_window = tk.Toplevel(self.window)
+            editar_window.transient(self.window)  # ✅ Hacer ventana modal
+            editar_window.grab_set()  # ✅ Bloquear interacción con la ventana padre
+
+            EditarUsuarioView(editar_window, usuario, callback=self.cargar_usuarios)
+        except Exception as e:
+            messagebox.showerror("❌ Error", f"No se pudo abrir la ventana de edición:\n{e}")       
+
+    def aprobar_usuario_directo(self, id_usuario):
+        """Aprobar usuario pendiente."""
+        # ✅ Asegurar que el messagebox esté encima de la ventana principal
+        if messagebox.askyesno("✅ Confirmar", f"¿Aprobar usuario ID {id_usuario}?", parent=self.window):
+            exito, mensaje = UsuarioController.aprobar_usuario(id_usuario)
+            if exito:
+                messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
+                self.cargar_usuarios()  # ✅ Refrescar tabla inmediatamente
+            else:
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)
+
+    def rechazar_usuario_directo(self, id_usuario):
+        """Rechazar usuario pendiente."""
+        # ✅ Asegurar que el messagebox esté encima de la ventana principal
+        if messagebox.askyesno("❌ Confirmar", f"¿Rechazar usuario ID {id_usuario}?", parent=self.window):
+            exito, mensaje = UsuarioController.rechazar_usuario(id_usuario)
+            if exito:
+                messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
+                self.cargar_usuarios()  # ✅ Refrescar tabla inmediatamente
+            else:
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)
 
     def desactivar_usuario_directo(self, id_usuario):
         # ✅ No permitir que un admin se elimine a sí mismo
@@ -135,19 +186,21 @@ class UsuarioAdminView:
             messagebox.showwarning("⚠️ Acción no permitida", "No puedes desactivarte a ti mismo.")
             return
 
-        if messagebox.askyesno("🗑️ Confirmar", f"¿Desactivar usuario ID {id_usuario}?"):
+        # ✅ Asegurar que el messagebox esté encima de la ventana principal
+        if messagebox.askyesno("🗑️ Confirmar", f"¿Desactivar usuario ID {id_usuario}?", parent=self.window):
             exito, mensaje = UsuarioController.eliminar_usuario(id_usuario)
             if exito:
-                messagebox.showinfo("✅ Éxito", mensaje)
-                self.cargar_usuarios()
+                messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
+                self.cargar_usuarios()  # ✅ Refrescar tabla inmediatamente
             else:
-                messagebox.showerror("❌ Error", mensaje)
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)                                                                                                 
 
     def reactivar_usuario_directo(self, id_usuario):
-        if messagebox.askyesno("✅ Confirmar", f"¿Reactivar usuario ID {id_usuario}?"):
+        # ✅ Asegurar que el messagebox esté encima de la ventana principal
+        if messagebox.askyesno("✅ Confirmar", f"¿Reactivar usuario ID {id_usuario}?", parent=self.window):
             exito, mensaje = UsuarioController.reactivar_usuario(id_usuario)
             if exito:
-                messagebox.showinfo("✅ Éxito", mensaje)
-                self.cargar_usuarios()
+                messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
+                self.cargar_usuarios()  # ✅ Refrescar tabla inmediatamente
             else:
-                messagebox.showerror("❌ Error", mensaje)
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)
