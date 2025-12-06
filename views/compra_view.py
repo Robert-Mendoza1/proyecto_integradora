@@ -4,13 +4,16 @@ from tkinter import ttk, messagebox
 from controllers.proveedor_controller import ProveedorController
 from controllers.producto_controller import ProductoController
 from controllers.compra_controller import CompraController
+from models.compra import Compra
 
 class CompraView:
-    def __init__(self, parent):
+    def __init__(self, parent, inventario_window=None):
         self.window = parent
         self.window.title("📥 Registrar Compra a Proveedor")
         self.window.geometry("750x550")
         self.window.resizable(False, False)
+
+        self.inventario_window = inventario_window  # ✅ Guardar referencia
 
         self.create_widgets()
         self.cargar_proveedores()
@@ -44,13 +47,18 @@ class CompraView:
         self.entry_cantidad = tk.Entry(frame_form, width=15)
         self.entry_cantidad.grid(row=3, column=1, padx=10, pady=5, sticky="w")
         self.entry_cantidad.insert(0, "1.000")
-        
+        self.entry_cantidad.bind("<KeyRelease>", self.calcular_total_compra)  # ✅ Añadir evento
 
         tk.Label(frame_form, text="Precio Compra ($/u) *:").grid(row=4, column=0, sticky="w", pady=5)
         self.entry_precio = tk.Entry(frame_form, width=15)
         self.entry_precio.grid(row=4, column=1, padx=10, pady=5, sticky="w")
         self.entry_precio.insert(0, "0.00")
+        self.entry_precio.bind("<KeyRelease>", self.calcular_total_compra)  # ✅ Añadir evento
 
+        # Total estimado
+        tk.Label(frame_form, text="Total Estimado:").grid(row=5, column=0, sticky="w", pady=5)
+        self.lbl_total = tk.Label(frame_form, text="$0.00", font=("Arial", 12, "bold"), fg="green")
+        self.lbl_total.grid(row=5, column=1, padx=10, pady=5, sticky="w")
 
         # Nota
         tk.Label(frame_form, text="Nota:").grid(row=6, column=0, sticky="nw", pady=5)
@@ -83,6 +91,9 @@ class CompraView:
         scrollbar.pack(side="right", fill="y")
 
         self.cargar_ultimas_compras()
+        # ✅ Notificar a la ventana de inventario que se actualice (si está abierta)
+        if hasattr(self.window, 'inventario_window') and self.window.inventario_window:
+            self.window.inventario_window.actualizar_tabla()
         
     def calcular_total_compra(self, event=None):
         """Calcula y muestra el total estimado = cantidad × precio_compra."""
@@ -152,14 +163,18 @@ class CompraView:
             self.lbl_info.config(text=f"{tipo} | Precio Venta: ${producto['precio_unitario']:.2f} | Stock: {stock}")
 
     def guardar_compra(self):
-        # Obtener datos
+        # Obtener datos del formulario
         proveedor_nombre = self.combo_proveedor.get()
-        id_proveedor = next((pid for pid, n in self.proveedores_dict.items() if n == proveedor_nombre), None)
-        
+        id_proveedor = None
+        for pid, pnombre in self.proveedores_dict.items():
+            if pnombre == proveedor_nombre:
+                id_proveedor = pid
+                break
+
         producto_nombre = self.combo_producto.get()
         producto = self.productos_dict.get(producto_nombre)
         if not producto:
-            messagebox.showwarning("⚠️", "Selecciona un producto.")
+            messagebox.showwarning("⚠️", "Selecciona un producto válido.", parent=self.window)
             return
         id_producto = producto['id']
 
@@ -167,29 +182,45 @@ class CompraView:
             cantidad = float(self.entry_cantidad.get())
             precio = float(self.entry_precio.get())
         except ValueError:
-            messagebox.showerror("❌", "Cantidad y precio deben ser números.")
+            messagebox.showerror("❌", "Cantidad y precio deben ser números válidos.", parent=self.window)
+            return
+
+        if cantidad <= 0:
+            messagebox.showwarning("⚠️", "La cantidad debe ser mayor a 0.", parent=self.window)
+            return
+        if precio < 0:
+            messagebox.showwarning("⚠️", "El precio no puede ser negativo.", parent=self.window)
             return
 
         nota = self.text_nota.get("1.0", "end-1c").strip()
 
-        # ✅ USAR CONTROLADOR
-        exito, mensaje = CompraController.registrar_compra(
-            id_producto=id_producto,
-            id_proveedor=id_proveedor,
-            cantidad=cantidad,
-            precio_compra=precio,
-            nota=nota
-        )
+        # ✅ Usar el controlador para registrar la compra
+        try:
+            exito, mensaje = CompraController.registrar_compra(
+                id_producto=id_producto,
+                id_proveedor=id_proveedor,
+                cantidad=cantidad,
+                precio_compra=precio,
+                nota=nota
+            )
+            
+            if exito:
+                messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
 
-        if exito:
-            messagebox.showinfo("✅ Éxito", mensaje)
-            self.entry_cantidad.delete(0, tk.END)
-            self.entry_cantidad.insert(0, "1.000")
-            self.entry_precio.delete(0, tk.END)
-            self.entry_precio.insert(0, "0.00")
-            self.text_nota.delete("1.0", tk.END)
-            self.lbl_info.config(text="—")
-            self.cargar_productos()  # stock actualizado
-            self.cargar_ultimas_compras()
-        else:
-            messagebox.showerror("❌ Error", mensaje)
+                # Limpiar y actualizar
+                self.entry_cantidad.delete(0, tk.END)
+                self.entry_cantidad.insert(0, "1.000")
+                self.entry_precio.delete(0, tk.END)
+                self.entry_precio.insert(0, "0.00")
+                self.text_nota.delete("1.0", tk.END)
+                self.lbl_total.config(text="$0.00")
+                self.lbl_info.config(text="—")
+
+                # ✅ Refrescar listas
+                self.cargar_productos()  # por si el stock cambió
+                self.cargar_ultimas_compras()
+            else:
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)
+
+        except Exception as e:
+            messagebox.showerror("❌ Error", f"No se pudo registrar la compra:\n{str(e)}", parent=self.window)

@@ -19,7 +19,7 @@ class Compra:
                 VALUES (%s, %s, %s, %s, %s)
             """, (id_producto, id_proveedor, cantidad, precio_compra, nota))
             
-            # Actualizar stock del producto
+            # ✅ Actualizar stock del producto
             cursor.execute("""
                 UPDATE productos 
                 SET stock = stock + %s 

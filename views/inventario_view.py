@@ -325,3 +325,27 @@ class InventarioView:
                     messagebox.showerror("❌ Error", mensaje)
             except Exception as e:
                 messagebox.showerror("❌ Error", f"No se pudo eliminar el producto:\n{e}")
+                
+                
+    def actualizar_tabla(self):
+        """Actualiza la tabla de productos en la ventana de inventario."""
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        productos = ProductoController.listar_productos()
+        for p in productos:
+            stock = float(p['stock'])
+            tipo = p['tipo']
+            stock_texto = f"{int(stock)} uds" if tipo == 'unidad' else f"{stock:.3f} kg"
+
+            self.tree.insert("", "end", values=(
+                p['id'],
+                p['codigo'],
+                p['nombre'],
+                "📦" if tipo == 'unidad' else "⚖️",
+                f"${p['precio_unitario']:.2f}",
+                f"{stock:.3f}",
+                stock_texto,
+                p.get('proveedor', '—'),
+                "N/A"  # Podrías agregar fecha de última compra si lo deseas
+            ))

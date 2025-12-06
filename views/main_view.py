@@ -9,8 +9,11 @@ class MainView:
         self.root = root
         self.usuario_datos = usuario_datos  # {'id': 1, 'nombre_completo': 'Juan', 'rol': 'admin'}
         self.root.title(f"🛒 Tienda a Granel - Bienvenido, {usuario_datos['nombre_completo']}")
-        self.root.geometry("900x600")
+        self.root.geometry("900x650")
         self.root.resizable(False, False)
+
+        # ✅ Inicializar inventario_window como None
+        self.inventario_window = None
 
         self.create_widgets()
 
@@ -97,15 +100,22 @@ class MainView:
 
     def abrir_compras(self):
         from views.compra_view import CompraView
-        CompraView(tk.Toplevel(self.root))
-
+        # Pasar la referencia de la ventana de inventario (puede ser None)
+        CompraView(tk.Toplevel(self.root), inventario_window=self.inventario_window)
+    
+    
     def abrir_ventas(self):
         from views.venta_view import VentaView
         VentaView(tk.Toplevel(self.root))
 
     def abrir_inventario(self):
         from views.inventario_view import InventarioView
-        InventarioView(tk.Toplevel(self.root))
+        # Cerrar ventana anterior si existe
+        if self.inventario_window and self.inventario_window.winfo_exists():
+            self.inventario_window.destroy()
+        # Crear nueva ventana
+        self.inventario_window = tk.Toplevel(self.root)
+        InventarioView(self.inventario_window)
 
     def abrir_reportes(self):
         from views.reporte_view import ReporteView
