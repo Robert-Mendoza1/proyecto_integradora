@@ -5,11 +5,16 @@ from models.proveedor import Proveedor
 class ProductoController:
     @staticmethod
     def listar_productos():
-        """Devuelve lista de productos con nombre de proveedor."""
-        return Producto.get_all()
+        """Obtiene todos los productos."""
+        try:
+            from models.producto import Producto
+            return Producto.get_all()  # ✅ Ya devuelve stock_bajo
+        except Exception as e:
+            print(f"⚠️ Error al listar productos: {e}")
+            return []
 
     @staticmethod
-    def crear_producto(codigo, nombre, descripcion, tipo, precio_unitario, stock, id_proveedor):
+    def crear_producto(codigo, nombre, descripcion, tipo, precio_unitario, stock, id_proveedor, stock_bajo=5.000):
         """
         Crea un nuevo producto. Valida datos.
         Retorna (éxito: bool, mensaje: str, id_producto: int|None)
@@ -20,12 +25,15 @@ class ProductoController:
         try:
             precio_unitario = float(precio_unitario)
             stock = float(stock)
+            stock_bajo = float(stock_bajo)
             if precio_unitario < 0:
                 return False, "❌ El precio no puede ser negativo.", None
             if stock < 0:
                 return False, "❌ El stock no puede ser negativo.", None
+            if stock_bajo < 0:
+                return False, "❌ El stock bajo no puede ser negativo.", None
         except (ValueError, TypeError):
-            return False, "❌ Precio y stock deben ser números válidos.", None
+            return False, "❌ Precio, stock y stock bajo deben ser números válidos.", None
 
         if tipo not in ['unidad', 'granel']:
             return False, "❌ Tipo debe ser 'unidad' o 'granel'.", None
@@ -41,13 +49,13 @@ class ProductoController:
                 return False, "❌ ID de proveedor inválido.", None
 
         try:
-            id_producto = Producto.create(codigo, nombre.strip(), descripcion.strip(), tipo, precio_unitario, stock, id_proveedor)
+            id_producto = Producto.create(codigo, nombre.strip(), descripcion.strip(), tipo, precio_unitario, stock, id_proveedor, stock_bajo)
             return True, "✅ Producto creado correctamente.", id_producto
         except Exception as e:
             return False, f"❌ Error al crear producto: {str(e)}", None
 
     @staticmethod
-    def actualizar_producto(id_producto, codigo, nombre, descripcion, tipo, precio_unitario, stock, id_proveedor):
+    def actualizar_producto(id_producto, codigo, nombre, descripcion, tipo, precio_unitario, stock, id_proveedor, stock_bajo=5.000):
         """Actualiza un producto existente."""
         if not nombre or not nombre.strip():
             return False, "❌ El nombre es obligatorio.", None
@@ -56,8 +64,9 @@ class ProductoController:
             id_producto = int(id_producto)
             precio_unitario = float(precio_unitario)
             stock = float(stock)
-            if precio_unitario < 0 or stock < 0:
-                return False, "❌ Precio y stock no pueden ser negativos.", None
+            stock_bajo = float(stock_bajo)
+            if precio_unitario < 0 or stock < 0 or stock_bajo < 0:
+                return False, "❌ Precio, stock y stock bajo no pueden ser negativos.", None
         except (ValueError, TypeError):
             return False, "❌ Datos numéricos inválidos.", None
 
@@ -74,7 +83,7 @@ class ProductoController:
                 return False, "❌ ID de proveedor inválido.", None
 
         try:
-            Producto.update(id_producto, codigo, nombre.strip(), descripcion.strip(), tipo, precio_unitario, stock, id_proveedor)
+            Producto.update(id_producto, codigo, nombre.strip(), descripcion.strip(), tipo, precio_unitario, stock, id_proveedor, stock_bajo)
             return True, "✅ Producto actualizado correctamente.", id_producto
         except Exception as e:
             return False, f"❌ Error al actualizar: {str(e)}", None

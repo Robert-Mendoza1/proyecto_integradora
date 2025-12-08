@@ -52,7 +52,7 @@ def create_tables():
 
         # Tabla productos
         cursor.execute("""
-        CREATE TABLE IF NOT EXISTS productos (
+            CREATE TABLE IF NOT EXISTS productos (
             id INT AUTO_INCREMENT PRIMARY KEY,
             codigo VARCHAR(50) UNIQUE,
             nombre VARCHAR(150) NOT NULL,
@@ -60,6 +60,7 @@ def create_tables():
             tipo ENUM('unidad', 'granel') NOT NULL DEFAULT 'unidad',
             precio_unitario DECIMAL(10,2) NOT NULL,
             stock DECIMAL(10,3) NOT NULL DEFAULT 0.000,
+            stock_bajo DECIMAL(10,3) NOT NULL DEFAULT 5.000,  -- ✅ Nuevo campo
             id_proveedor INT,
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (id_proveedor) REFERENCES proveedores(id) ON DELETE SET NULL

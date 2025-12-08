@@ -261,9 +261,10 @@ class ReporteView:
             productos = ProductoController.listar_productos()
             filtro = self.combo_filtro_stock.get()
 
-            # Filtrar
+            # ✅ Filtrar según opción seleccionada
             if filtro == "Bajo Stock":
-                productos = [p for p in productos if p['stock'] < 5]  # Personalizable
+                # ✅ Filtrar por stock actual < stock_bajo Y stock > 0
+                productos = [p for p in productos if p['stock'] < p.get('stock_bajo', 5.0) and p['stock'] > 0]
             elif filtro == "Sin Stock":
                 productos = [p for p in productos if p['stock'] <= 0]
 
@@ -284,7 +285,7 @@ class ReporteView:
                 ))
 
         except Exception as e:
-            messagebox.showerror("❌ Error", f"No se pudo cargar el inventario:\n{e}")
+            messagebox.showerror("❌ Error", f"No se pudo cargar el inventario:\n{e}", parent=self.window)
 
     def exportar_ventas_csv(self):
         """Exporta ventas a CSV."""

@@ -115,3 +115,14 @@ class UsuarioController:
             return True, "✅ Usuario reactivado correctamente."
         except Exception as e:
             return False, f"❌ Error al reactivar usuario: {str(e)}"
+        
+        
+    @staticmethod
+    def eliminar_usuario_fisico(id_usuario):
+        """Eliminar un usuario físicamente de la base de datos."""
+        try:
+            from models.usuario import Usuario
+            Usuario.eliminar_usuario_fisico(id_usuario)
+            return True, "✅ Usuario eliminado físicamente correctamente."
+        except Exception as e:
+            return False, f"❌ Error al eliminar usuario: {str(e)}"

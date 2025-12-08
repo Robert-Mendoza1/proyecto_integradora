@@ -206,20 +206,61 @@ class VentaView:
             precio = float(values[4].replace("$", ""))
             stock_actual = float(values[5])
 
-            # ✅ Cantidad predeterminada
-            cantidad_predeterminada = 0.500 if tipo == "granel" else 1  # 500g o 1 unidad
+            # ✅ Validar tipo de producto
+            if tipo == "unidad":
+                # Para productos por unidad, pedir cantidad como float y validar que sea entero
+                cantidad_float = simpledialog.askfloat(
+                    "Cantidad", 
+                    f"Ingrese cantidad a vender (unidades):\n"
+                    f"Producto: {nombre}\n"
+                    f"Precio: ${precio:.2f}",
+                    initialvalue=1.0,
+                    minvalue=1.0,
+                    maxvalue=float(int(stock_actual)),
+                    parent=self.window
+                )
+                if cantidad_float is None:
+                    return  # Canceló
 
-            # Validar stock
-            if cantidad_predeterminada > stock_actual:
+                # Validar que sea entero
+                if not cantidad_float.is_integer():
+                    messagebox.showerror("❌ Error", "La cantidad debe ser un número entero.", parent=self.window)
+                    return
+
+                cantidad = int(cantidad_float)
+            else:
+                # Para productos a granel, permitir decimales
+                cantidad = simpledialog.askfloat(
+                    "Cantidad", 
+                    f"Ingrese cantidad a vender (kg):\n"
+                    f"Producto: {nombre}\n"
+                    f"Precio: ${precio:.2f}",
+                    initialvalue=0.500,
+                    minvalue=0.001,
+                    maxvalue=stock_actual,
+                    parent=self.window
+                )
+                if cantidad is None:
+                    return  # Canceló
+            if cantidad <= 0:
+                messagebox.showwarning("⚠️", "La cantidad debe ser mayor a 0.", parent=self.window)
+                return
+
+            if cantidad > stock_actual:
                 unidad = "kg" if tipo == "granel" else "uds"
                 messagebox.showerror("❌ Stock insuficiente", 
-                                f"Disponible: {stock_actual:.3f} {unidad}")
+                                f"Disponible: {stock_actual:.3f} {unidad}", parent=self.window)
                 return
 
             # Verificar si ya está en el carrito
             for item in self.carrito:
                 if item['id'] == id_prod:
-                    item['cantidad'] += cantidad_predeterminada
+                    # ✅ Validar que no se mezclen tipos
+                    if item['tipo'] != tipo:
+                        messagebox.showerror("❌ Error", 
+                                        f"Este producto ya está en el carrito como '{item['tipo']}'.", parent=self.window)
+                        return
+                    item['cantidad'] += cantidad
                     item['total'] = item['cantidad'] * item['precio']
                     self.actualizar_carrito()
                     return
@@ -228,16 +269,15 @@ class VentaView:
             self.carrito.append({
                 'id': id_prod,
                 'nombre': nombre,
-                'cantidad': cantidad_predeterminada,
+                'cantidad': cantidad,
                 'precio': precio,
-                'total': cantidad_predeterminada * precio,
+                'total': cantidad * precio,
                 'tipo': tipo
             })
             self.actualizar_carrito()
 
         except Exception as e:
-            messagebox.showerror("❌ Error", f"No se pudo agregar el producto:\n{e}")
-
+            messagebox.showerror("❌ Error", f"No se pudo agregar el producto:\n{e}", parent=self.window)
 
 
     def editar_cantidad_carrito(self, event):
@@ -260,11 +300,16 @@ class VentaView:
             "Editar Cantidad",
             f"Nueva cantidad para '{item['nombre']}':",
             initialvalue=item['cantidad'],
-            minvalue=0.001 if item['tipo'] == 'granel' else 1,
+            minvalue=0.001 if item['tipo'] == 'granel' else 1.0,
             parent=self.window
         )
 
         if nueva_cantidad is not None:
+            # ✅ Validar que sea entero si el producto es por unidad
+            if item['tipo'] == 'unidad' and not nueva_cantidad.is_integer():
+                messagebox.showerror("❌ Error", "La cantidad debe ser un número entero.", parent=self.window)
+                return
+
             if nueva_cantidad <= 0:
                 # Eliminar si es 0
                 self.carrito.remove(item)
@@ -298,18 +343,19 @@ class VentaView:
             self.carrito.clear()
             self.actualizar_carrito()
 
+    
     def agregar_producto_por_codigo(self, event=None):
         """Agrega un producto al carrito usando su código de barras."""
         codigo = self.entry_codigo_barras.get().strip()
         if not codigo:
-            messagebox.showwarning("⚠️", "Escribe o escanea un código de producto.")
+            messagebox.showwarning("⚠️", "Escribe o escanea un código de producto.", parent=self.window)
             return
 
         # Buscar producto por código
         try:
             productos = ProductoController.buscar_producto(codigo=codigo)
             if not productos:
-                messagebox.showerror("❌", f"No se encontró un producto con código: {codigo}")
+                messagebox.showerror("❌", f"No se encontró un producto con código: {codigo}", parent=self.window)
                 self.entry_codigo_barras.delete(0, tk.END)
                 return
 
@@ -317,45 +363,69 @@ class VentaView:
             id_prod = producto['id']
             nombre = producto['nombre']
             tipo = producto['tipo']
-            precio = producto['precio_unitario']  # Esto es Decimal
-            stock_actual = producto['stock']      # Esto es Decimal
+            precio = producto['precio_unitario']
+            stock_actual = producto['stock']
 
-            # Pedir cantidad
-            cantidad_inicial = "0.500" if tipo == "granel" else "1"
-            cantidad = simpledialog.askfloat(
-                "Cantidad", 
-                f"Ingrese cantidad a vender ({'kg' if tipo=='granel' else 'unidades'}):\n"
-                f"Producto: {nombre}\n"
-                f"Precio: ${precio:.2f}",
-                initialvalue=cantidad_inicial,
-                minvalue=0.001 if tipo == "granel" else 1,
-                parent=self.window
-            )
-            if cantidad is None:
-                self.entry_codigo_barras.delete(0, tk.END)
-                return  # Canceló
+            # ✅ Validar tipo de producto
+            if tipo == "unidad":
+                # Para productos por unidad, pedir cantidad como float y validar que sea entero
+                cantidad_float = simpledialog.askfloat(
+                    "Cantidad", 
+                    f"Ingrese cantidad a vender (unidades):\n"
+                    f"Producto: {nombre}\n"
+                    f"Precio: ${precio:.2f}",
+                    initialvalue=1.0,
+                    minvalue=1.0,
+                    maxvalue=float(int(stock_actual)),
+                    parent=self.window
+                )
+                if cantidad_float is None:
+                    return  # Canceló
+
+                # Validar que sea entero
+                if not cantidad_float.is_integer():
+                    messagebox.showerror("❌ Error", "La cantidad debe ser un número entero.", parent=self.window)
+                    return
+
+                cantidad = int(cantidad_float)
+            else:
+                # Para productos a granel, permitir decimales
+                cantidad = simpledialog.askfloat(
+                    "Cantidad", 
+                    f"Ingrese cantidad a vender (kg):\n"
+                    f"Producto: {nombre}\n"
+                    f"Precio: ${precio:.2f}",
+                    initialvalue=0.500,
+                    minvalue=0.001,
+                    maxvalue=stock_actual,
+                    parent=self.window
+                )
+                if cantidad is None:
+                    self.entry_codigo_barras.delete(0, tk.END)
+                    return  # Canceló
 
             if cantidad <= 0:
-                messagebox.showwarning("⚠️", "La cantidad debe ser mayor a 0.")
+                messagebox.showwarning("⚠️", "La cantidad debe ser mayor a 0.", parent=self.window)
                 self.entry_codigo_barras.delete(0, tk.END)
                 return
 
-            # ✅ Convertir cantidad a Decimal para evitar errores
-            from decimal import Decimal, getcontext
-            getcontext().prec = 10
-            cantidad_decimal = Decimal(str(cantidad))  # Convertir a Decimal
-
-            if cantidad_decimal > stock_actual:
+            if cantidad > stock_actual:
                 unidad = "kg" if tipo == "granel" else "uds"
                 messagebox.showerror("❌ Stock insuficiente", 
-                                f"Disponible: {stock_actual:.3f} {unidad}")
+                                f"Disponible: {stock_actual:.3f} {unidad}", parent=self.window)
                 self.entry_codigo_barras.delete(0, tk.END)
                 return
 
             # Verificar si ya está en el carrito
             for item in self.carrito:
                 if item['id'] == id_prod:
-                    item['cantidad'] += cantidad_decimal
+                    # ✅ Validar que no se mezclen tipos
+                    if item['tipo'] != tipo:
+                        messagebox.showerror("❌ Error", 
+                                        f"Este producto ya está en el carrito como '{item['tipo']}'.", parent=self.window)
+                        self.entry_codigo_barras.delete(0, tk.END)
+                        return
+                    item['cantidad'] += cantidad
                     item['total'] = item['cantidad'] * item['precio']
                     self.actualizar_carrito()
                     self.entry_codigo_barras.delete(0, tk.END)  # Limpiar campo
@@ -365,17 +435,18 @@ class VentaView:
             self.carrito.append({
                 'id': id_prod,
                 'nombre': nombre,
-                'cantidad': cantidad_decimal,
-                'precio': float(precio),  # Convertir a float para evitar errores en la tabla
-                'total': float(cantidad_decimal * precio),  # Calcular total como float
+                'cantidad': cantidad,
+                'precio': precio,
+                'total': cantidad * precio,
                 'tipo': tipo
             })
             self.actualizar_carrito()
             self.entry_codigo_barras.delete(0, tk.END)  # Limpiar campo
 
         except Exception as e:
-            messagebox.showerror("❌ Error", f"No se pudo agregar el producto:\n{e}")
+            messagebox.showerror("❌ Error", f"No se pudo agregar el producto:\n{e}", parent=self.window)
             self.entry_codigo_barras.delete(0, tk.END)
+    
 
     def confirmar_venta(self):
         """Inicia el proceso de venta con pantalla de pago."""
