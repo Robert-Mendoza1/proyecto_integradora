@@ -8,22 +8,28 @@ class ProveedorView:
         self.window = parent
         self.window.title("👥 Gestión de Proveedores")
         self.window.geometry("900x550")
+        self.window.resizable(False, False)
 
+        self.proveedor_seleccionado_id = None
         self.create_widgets()
         self.cargar_proveedores()
 
     def create_widgets(self):
+        # Frame superior: título y botón nuevo
         top_frame = tk.Frame(self.window)
         top_frame.pack(fill="x", padx=15, pady=10)
         tk.Label(top_frame, text="👥 Proveedores", font=("Arial", 16, "bold")).pack(side="left")
+        
         ttk.Button(top_frame, text="➕ Nuevo Proveedor", command=self.abrir_formulario).pack(side="right")
 
+        # Frame central: tabla
         frame_tabla = tk.Frame(self.window)
         frame_tabla.pack(fill="both", expand=True, padx=15)
 
+        # Tabla con columnas
         columns = ("ID", "Nombre", "Contacto", "Teléfono", "Email", "Dirección")
         self.tree = ttk.Treeview(frame_tabla, columns=columns, show="headings", height=15)
-
+        
         for col in columns:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=120, anchor="w" if col != "ID" else "center")
@@ -37,29 +43,23 @@ class ProveedorView:
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # ✅ Bind para clic derecho (funciona en Windows/Linux/macOS)
-        self.tree.bind("<Button-3>", self.mostrar_menu_contextual)  # Clic derecho
+        # ✅ Vincular clic derecho al árbol
+        self.tree.bind("<Button-3>", self.mostrar_menu_contextual)
 
         self.cargar_proveedores()
 
     def cargar_proveedores(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
-
         proveedores = ProveedorController.listar_proveedores()
         for p in proveedores:
             self.tree.insert("", "end", values=(
-                p['id'],
-                p['nombre'],
-                p['contacto'] or "—",
-                p['telefono'] or "—",
-                p['email'] or "—",
-                p['direccion'] or "—"
+                p['id'], p['nombre'], p['contacto'] or "—", p['telefono'] or "—", p['email'] or "—", p['direccion'] or "—"
             ))
 
     def mostrar_menu_contextual(self, event):
-        """Muestra menú contextual al hacer clic derecho."""
-        # Obtener el item bajo el cursor
+        """Muestra menú contextual al hacer clic derecho sobre una fila."""
+        # Identificar la fila bajo el cursor
         row_id = self.tree.identify_row(event.y)
         if not row_id:
             return  # No hay fila bajo el cursor
@@ -72,47 +72,47 @@ class ProveedorView:
 
         try:
             id_prov = int(values[0])
-        except (ValueError, TypeError):
+        except (ValueError, IndexError):
             return
 
         # Crear menú contextual
         menu = tk.Menu(self.window, tearoff=0)
+
         menu.add_command(
-            label="✏️ Editar",
-            command=lambda: self.abrir_formulario_editar(id_prov)
+            label="✏️ Editar Proveedor",
+            command=lambda: self.editar_proveedor_directo(id_prov),
+            foreground="blue"
         )
         menu.add_command(
-            label="🗑️ Eliminar",
-            command=lambda: self.eliminar_proveedor(id_prov)
+            label="🗑️ Eliminar Proveedor",
+            command=lambda: self.eliminar_proveedor_directo(id_prov),
+            foreground="red"
         )
+
         menu.add_separator()
-        menu.add_command(label="❌ Cancelar", command=menu.destroy)
+        menu.add_command(label="❌ Cerrar", command=menu.destroy)
 
         # Mostrar menú en la posición del clic
         menu.tk_popup(event.x_root, event.y_root)
 
-    def abrir_formulario_editar(self, id_proveedor):
-        """Abre el formulario de edición."""
+    def editar_proveedor_directo(self, id_proveedor):
+        """Editar proveedor directamente."""
         from views.proveedor_form import ProveedorForm
         ProveedorForm(self.window, proveedor_id=id_proveedor, callback=self.cargar_proveedores)
 
-    def eliminar_proveedor(self, id_proveedor):
-        """Elimina un proveedor directamente por su ID."""
-        if not isinstance(id_proveedor, int) or id_proveedor <= 0:
-            messagebox.showerror("❌", f"ID inválido: {id_proveedor}")
-            return
-
+    def eliminar_proveedor_directo(self, id_proveedor):
+        """Eliminar proveedor directamente."""
         if messagebox.askyesno(
             "🗑️ Confirmar eliminación",
-            f"¿Eliminar proveedor ID {id_proveedor}?\n"
-            "Los productos asociados quedarán sin proveedor."
+            f"¿Eliminar proveedor ID {id_proveedor}?\nLos productos asociados quedarán sin proveedor.",
+            parent=self.window
         ):
             exito, mensaje = ProveedorController.eliminar_proveedor(id_proveedor)
             if exito:
-                messagebox.showinfo("✅ Éxito", mensaje)
-                self.cargar_proveedores()  # refrescar tabla
+                messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
+                self.cargar_proveedores()
             else:
-                messagebox.showerror("❌ Error", mensaje)
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)
 
     def abrir_formulario(self):
         """Abre formulario para crear nuevo proveedor."""

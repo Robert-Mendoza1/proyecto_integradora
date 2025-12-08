@@ -48,11 +48,14 @@ class ProductoView:
         self.entry_precio.grid(row=5, column=1, pady=5)
 
         tk.Label(frame_form, text="Stock Inicial:").grid(row=6, column=0, sticky="e", pady=5)
-        # ✅ Validar también el stock
-        vcmd_stock = (self.window.register(self.validar_numero), '%P')
+        # ✅ Validar stock según tipo (entero para unidad, decimal para granel)
+        vcmd_stock = (self.window.register(self.validar_stock), '%P', '%W')
         self.entry_stock = tk.Entry(frame_form, width=25, validate='key', validatecommand=vcmd_stock)
         self.entry_stock.grid(row=6, column=1, pady=5)
         self.entry_stock.insert(0, "0.000")
+
+        # ✅ Vincular cambio de tipo para actualizar validación
+        self.combo_tipo.bind("<<ComboboxSelected>>", self.actualizar_validacion_stock)
 
         tk.Label(frame_form, text="Proveedor:").grid(row=7, column=0, sticky="e", pady=5)
         self.combo_proveedor = ttk.Combobox(frame_form, state="readonly", width=22)
@@ -90,6 +93,14 @@ class ProductoView:
         # ✅ Vincular clic derecho al árbol
         self.tree.bind("<Button-3>", self.mostrar_menu_contextual)
 
+        tk.Label(frame_form, text="Stock Bajo:").grid(row=7, column=0, sticky="e", pady=5)
+        vcmd_stock_bajo = (self.window.register(self.validar_numero), '%P')
+        self.entry_stock_bajo = tk.Entry(frame_form, width=25, validate='key', validatecommand=vcmd_stock_bajo)
+        self.entry_stock_bajo.grid(row=7, column=1, pady=5)
+        self.entry_stock_bajo.insert(0, "5.000")  # Valor predeterminado
+        
+        
+        
     def validar_numero(self, valor):
         """Valida que el campo solo acepte números (enteros o decimales)."""
         if valor == "":
@@ -99,6 +110,59 @@ class ProductoView:
             return True
         except ValueError:
             return False
+
+    def validar_stock(self, valor, widget):
+        """Valida que el campo de stock acepte enteros o decimales según el tipo."""
+        if valor == "":
+            return True  # Permitir campo vacío
+
+        # Obtener el tipo de producto actual
+        tipo_actual = self.combo_tipo.get()
+
+        if tipo_actual == "unidad":
+            # Solo permitir números enteros
+            try:
+                int(valor)
+                return True
+            except ValueError:
+                return False
+        elif tipo_actual == "granel":
+            # Permitir números decimales
+            try:
+                float(valor)
+                return True
+            except ValueError:
+                return False
+        else:
+            # Si no hay tipo seleccionado, permitir ambos
+            try:
+                float(valor)
+                return True
+            except ValueError:
+                return False
+
+    def actualizar_validacion_stock(self, event=None):
+        """Actualizar la validación del stock cuando cambia el tipo."""
+        # Obtener el tipo de producto actual
+        tipo_actual = self.combo_tipo.get()
+
+        # Limpiar el campo de stock
+        stock_actual = self.entry_stock.get()
+        self.entry_stock.delete(0, tk.END)
+
+        # Si era un valor válido, mantenerlo
+        if stock_actual:
+            try:
+                if tipo_actual == "unidad":
+                    # Convertir a entero si es posible
+                    stock_entero = int(float(stock_actual))  # Convertir a float primero para manejar "1.0"
+                    self.entry_stock.insert(0, str(stock_entero))
+                else:
+                    # Mantener como decimal
+                    self.entry_stock.insert(0, stock_actual)
+            except ValueError:
+                # Si no es válido, dejar vacío
+                pass
 
     def cargar_proveedores(self):
         """Carga proveedores y los guarda en self.lista_proveedores"""
@@ -166,6 +230,7 @@ class ProductoView:
         tipo = self.combo_tipo.get()
         precio = self.entry_precio.get()
         stock = self.entry_stock.get()
+        stock_bajo = self.entry_stock_bajo.get() or "5.000"  # Valor predeterminado
         
         # ✅ Obtener proveedor seleccionado (puede ser None)
         proveedor_nombre = self.combo_proveedor.get()
@@ -181,13 +246,13 @@ class ProductoView:
         if self.producto_seleccionado_id is None:
             exito, mensaje, _ = ProductoController.crear_producto(
                 codigo=codigo, nombre=nombre, descripcion=desc, tipo=tipo,
-                precio_unitario=precio, stock=stock, id_proveedor=id_proveedor
+                precio_unitario=precio, stock=stock, id_proveedor=id_proveedor, stock_bajo=stock_bajo
             )
         else:
             exito, mensaje, _ = ProductoController.actualizar_producto(
                 id_producto=self.producto_seleccionado_id, codigo=codigo, nombre=nombre,
                 descripcion=desc, tipo=tipo, precio_unitario=precio, stock=stock,
-                id_proveedor=id_proveedor
+                id_proveedor=id_proveedor, stock_bajo=stock_bajo
             )
 
         if exito:
@@ -196,6 +261,7 @@ class ProductoView:
             self.cargar_productos()
         else:
             messagebox.showerror("❌ Error", mensaje, parent=self.window)
+        
 
     def limpiar(self):
         self.producto_seleccionado_id = None
@@ -293,6 +359,3 @@ class ProductoView:
                 self.cargar_productos()
             else:
                 messagebox.showerror("❌ Error", mensaje, parent=self.window)
-
-    # ✅ Eliminar los métodos editar() y eliminar() antiguos
-    # ✅ Eliminar el método forzar_seleccion() si ya no lo necesitas

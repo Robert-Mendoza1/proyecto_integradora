@@ -135,3 +135,13 @@ class Usuario:
 
         cursor.close()
         conn.close()
+        
+    @staticmethod
+    def eliminar_usuario_fisico(id_usuario):
+        """Eliminar un usuario físicamente de la base de datos."""
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM usuarios WHERE id = %s", (id_usuario,))
+        conn.commit()
+        cursor.close()
+        conn.close()

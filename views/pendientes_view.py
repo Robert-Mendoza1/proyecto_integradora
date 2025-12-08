@@ -95,19 +95,19 @@ class PendientesView:
         menu.tk_popup(event.x_root, event.y_root)
 
     def aprobar_usuario(self, id_usuario):
-        if messagebox.askyesno("✅ Confirmar", f"¿Aprobar usuario ID {id_usuario}?"):
+        if messagebox.askyesno("✅ Confirmar", f"¿Aprobar usuario ID {id_usuario}?", parent=self.window):
             exito, mensaje = UsuarioController.aprobar_usuario(id_usuario)
             if exito:
-                messagebox.showinfo("✅ Éxito", mensaje)
+                messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)  # ✅ Añadir parent
                 self.cargar_usuarios_pendientes()
             else:
-                messagebox.showerror("❌ Error", mensaje)
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)  # ✅ Añadir parent
 
     def rechazar_usuario(self, id_usuario):
-        if messagebox.askyesno("❌ Confirmar", f"¿Rechazar usuario ID {id_usuario}?"):
+        if messagebox.askyesno("❌ Confirmar", f"¿Rechazar usuario ID {id_usuario}?", parent=self.window):
             exito, mensaje = UsuarioController.rechazar_usuario(id_usuario)
             if exito:
-                messagebox.showinfo("✅ Éxito", mensaje)
+                messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)  # ✅ Añadir parent
                 self.cargar_usuarios_pendientes()
             else:
-                messagebox.showerror("❌ Error", mensaje)
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)  # ✅ Añadir parent

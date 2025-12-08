@@ -87,7 +87,7 @@ class UsuarioAdminView:
 
         # ✅ No permitir que un admin se elimine a sí mismo
         if id_usuario == self.usuario_datos['id']:
-            messagebox.showwarning("⚠️ Acción no permitida", "No puedes modificarte a ti mismo.")
+            messagebox.showwarning("⚠️ Acción no permitida", "No puedes eliminarte a ti mismo.", parent=self.window)
             return
 
         # Crear menú contextual
@@ -98,6 +98,13 @@ class UsuarioAdminView:
             label="✏️ Editar Usuario",
             command=lambda: self.editar_usuario_directo(id_usuario),
             foreground="blue"
+        )
+
+        # ✅ Opción para eliminar usuario
+        menu.add_command(
+            label="🗑️ Eliminar Usuario",
+            command=lambda: self.eliminar_usuario_directo(id_usuario),
+            foreground="red"
         )
 
         # ✅ Opciones según estatus
@@ -116,7 +123,7 @@ class UsuarioAdminView:
         elif "Activo" in estatus_texto:
             # Si está activo, mostrar opción para desactivar
             menu.add_command(
-                label="🗑️ Desactivar Usuario",
+                label="❌ Desactivar Usuario",
                 command=lambda: self.desactivar_usuario_directo(id_usuario),
                 foreground="red"
             )
@@ -136,71 +143,79 @@ class UsuarioAdminView:
 
     def editar_usuario_directo(self, id_usuario):
         """Abrir ventana para editar usuario."""
-        try:
-            # Obtener datos del usuario
-            usuarios = UsuarioController.listar_usuarios()
-            usuario = None
-            for u in usuarios:
-                if u['id'] == id_usuario:
-                    usuario = u
-                    break
+        # Obtener datos del usuario
+        usuarios = UsuarioController.listar_usuarios()
+        usuario = None
+        for u in usuarios:
+            if u['id'] == id_usuario:
+                usuario = u
+                break
 
-            if not usuario:
-                messagebox.showerror("❌ Error", "Usuario no encontrado.")
-                return
+        if not usuario:
+            messagebox.showerror("❌ Error", "Usuario no encontrado.", parent=self.window)
+            return
 
-            # Abrir ventana de edición
-            editar_window = tk.Toplevel(self.window)
-            editar_window.transient(self.window)  # ✅ Hacer ventana modal
-            editar_window.grab_set()  # ✅ Bloquear interacción con la ventana padre
+        # Abrir ventana de edición
+        editar_window = tk.Toplevel(self.window)
+        editar_window.transient(self.window)  # ✅ Hacer ventana modal
+        editar_window.grab_set()  # ✅ Bloquear interacción con la ventana padre
 
-            EditarUsuarioView(editar_window, usuario, callback=self.cargar_usuarios)
-        except Exception as e:
-            messagebox.showerror("❌ Error", f"No se pudo abrir la ventana de edición:\n{e}")       
+        EditarUsuarioView(editar_window, usuario, callback=self.cargar_usuarios)
+
+    def eliminar_usuario_directo(self, id_usuario):
+        """Eliminar usuario directamente."""
+        # ✅ No permitir que un admin se elimine a sí mismo
+        if id_usuario == self.usuario_datos['id']:
+            messagebox.showwarning("⚠️ Acción no permitida", "No puedes eliminarte a ti mismo.", parent=self.window)
+            return
+
+        if messagebox.askyesno("🗑️ Confirmar", f"¿Eliminar físicamente usuario ID {id_usuario}?\nEsta acción no se puede deshacer.", parent=self.window):
+            exito, mensaje = UsuarioController.eliminar_usuario_fisico(id_usuario)
+            if exito:
+                messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
+                self.cargar_usuarios()
+            else:
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)
 
     def aprobar_usuario_directo(self, id_usuario):
         """Aprobar usuario pendiente."""
-        # ✅ Asegurar que el messagebox esté encima de la ventana principal
         if messagebox.askyesno("✅ Confirmar", f"¿Aprobar usuario ID {id_usuario}?", parent=self.window):
             exito, mensaje = UsuarioController.aprobar_usuario(id_usuario)
             if exito:
                 messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
-                self.cargar_usuarios()  # ✅ Refrescar tabla inmediatamente
+                self.cargar_usuarios()
             else:
                 messagebox.showerror("❌ Error", mensaje, parent=self.window)
 
     def rechazar_usuario_directo(self, id_usuario):
         """Rechazar usuario pendiente."""
-        # ✅ Asegurar que el messagebox esté encima de la ventana principal
         if messagebox.askyesno("❌ Confirmar", f"¿Rechazar usuario ID {id_usuario}?", parent=self.window):
             exito, mensaje = UsuarioController.rechazar_usuario(id_usuario)
             if exito:
                 messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
-                self.cargar_usuarios()  # ✅ Refrescar tabla inmediatamente
+                self.cargar_usuarios()
             else:
                 messagebox.showerror("❌ Error", mensaje, parent=self.window)
 
     def desactivar_usuario_directo(self, id_usuario):
         # ✅ No permitir que un admin se elimine a sí mismo
         if id_usuario == self.usuario_datos['id']:
-            messagebox.showwarning("⚠️ Acción no permitida", "No puedes desactivarte a ti mismo.")
+            messagebox.showwarning("⚠️ Acción no permitida", "No puedes desactivarte a ti mismo.", parent=self.window)
             return
 
-        # ✅ Asegurar que el messagebox esté encima de la ventana principal
-        if messagebox.askyesno("🗑️ Confirmar", f"¿Desactivar usuario ID {id_usuario}?", parent=self.window):
+        if messagebox.askyesno("❌ Confirmar", f"¿Desactivar usuario ID {id_usuario}?", parent=self.window):
             exito, mensaje = UsuarioController.eliminar_usuario(id_usuario)
             if exito:
                 messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
-                self.cargar_usuarios()  # ✅ Refrescar tabla inmediatamente
+                self.cargar_usuarios()
             else:
-                messagebox.showerror("❌ Error", mensaje, parent=self.window)                                                                                                 
+                messagebox.showerror("❌ Error", mensaje, parent=self.window)
 
     def reactivar_usuario_directo(self, id_usuario):
-        # ✅ Asegurar que el messagebox esté encima de la ventana principal
         if messagebox.askyesno("✅ Confirmar", f"¿Reactivar usuario ID {id_usuario}?", parent=self.window):
             exito, mensaje = UsuarioController.reactivar_usuario(id_usuario)
             if exito:
                 messagebox.showinfo("✅ Éxito", mensaje, parent=self.window)
-                self.cargar_usuarios()  # ✅ Refrescar tabla inmediatamente
+                self.cargar_usuarios()
             else:
                 messagebox.showerror("❌ Error", mensaje, parent=self.window)
