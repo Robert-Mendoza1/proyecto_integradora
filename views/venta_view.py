@@ -28,7 +28,7 @@ class VentaView:
         try:
             logo_path = os.path.join("assets", "logo.png")
             logo_img = Image.open(logo_path)
-            logo_img = logo_img.resize((60, 60), Image.LANCZOS)
+            logo_img = logo_img.resize((120, 60), Image.LANCZOS)
             self.logo = ImageTk.PhotoImage(logo_img)
             tk.Label(logo_frame, image=self.logo, bg="#f8f9fa").pack(side="left", padx=20)
         except Exception as e:

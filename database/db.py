@@ -41,10 +41,10 @@ def create_tables():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS proveedores (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            nombre VARCHAR(100) NOT NULL,
-            contacto VARCHAR(100),
+            nombre VARCHAR(50) NOT NULL,
+            contacto VARCHAR(50),
             telefono VARCHAR(20),
-            email VARCHAR(100),
+            email VARCHAR(50),
             direccion TEXT,
             fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -55,7 +55,7 @@ def create_tables():
             CREATE TABLE IF NOT EXISTS productos (
             id INT AUTO_INCREMENT PRIMARY KEY,
             codigo VARCHAR(50) UNIQUE,
-            nombre VARCHAR(150) NOT NULL,
+            nombre VARCHAR(50) NOT NULL,
             descripcion TEXT,
             tipo ENUM('unidad', 'granel') NOT NULL DEFAULT 'unidad',
             precio_unitario DECIMAL(10,2) NOT NULL,
@@ -100,8 +100,8 @@ def create_tables():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            nombre_usuario VARCHAR(50) UNIQUE NOT NULL,
-            nombre_completo VARCHAR(100) NOT NULL,
+            nombre_usuario VARCHAR(10) UNIQUE NOT NULL,
+            nombre_completo VARCHAR(50) NOT NULL,
             contrasena_hash VARCHAR(255) NOT NULL,
             rol ENUM('admin', 'vendedor') NOT NULL DEFAULT 'vendedor',
             estatus ENUM('activo', 'inactivo', 'pendiente') NOT NULL DEFAULT 'pendiente',

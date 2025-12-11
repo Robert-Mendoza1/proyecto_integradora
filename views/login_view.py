@@ -23,7 +23,7 @@ class LoginView:
         try:
             logo_path = os.path.join("assets", "logo.png")
             logo_img = Image.open(logo_path)
-            logo_img = logo_img.resize((100, 100), Image.LANCZOS)
+            logo_img = logo_img.resize((200, 100), Image.LANCZOS)
             self.logo = ImageTk.PhotoImage(logo_img)
             tk.Label(self.window, image=self.logo).pack(pady=20)
         except (FileNotFoundError, OSError) as e:
@@ -53,8 +53,7 @@ class LoginView:
         ttk.Button(btn_frame, text="🔐 Iniciar Sesión", command=self.login).pack(fill="x", pady=5)
         ttk.Button(btn_frame, text="📝 Registrarse", command=self.registrarse).pack(fill="x", pady=5)
 
-        # Enlace para recuperar contraseña (futuro)
-        tk.Label(self.window, text="¿Olvidaste tu contraseña?", fg="blue", cursor="hand2").pack(pady=10)
+       
 
     def login(self):
         usuario = self.entry_usuario.get().strip()

@@ -31,7 +31,7 @@ class MainView:
         try:
             logo_path = os.path.join("assets", "logo.png")
             logo_img = Image.open(logo_path)
-            logo_img = logo_img.resize((120, 120), Image.LANCZOS)
+            logo_img = logo_img.resize((240, 120), Image.LANCZOS)
             self.logo = ImageTk.PhotoImage(logo_img)
             tk.Label(self.root, image=self.logo).pack(pady=10)
         except (FileNotFoundError, OSError) as e:

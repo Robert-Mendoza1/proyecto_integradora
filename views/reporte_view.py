@@ -28,7 +28,7 @@ class ReporteView:
         try:
             logo_path = os.path.join("assets", "logo.png")
             logo_img = Image.open(logo_path)
-            logo_img = logo_img.resize((50, 50), Image.LANCZOS)
+            logo_img = logo_img.resize((100, 50), Image.LANCZOS)
             self.logo = ImageTk.PhotoImage(logo_img)
             tk.Label(logo_frame, image=self.logo, bg="#f0f4f8").pack(side="left", padx=20)
         except:
